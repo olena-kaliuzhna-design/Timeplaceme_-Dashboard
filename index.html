@@ -909,13 +909,13 @@ PAGES['a:customers'] = main => {
       { key: 'business', label: 'Business', sortable: true },
       { key: 'phone', label: 'Phone', render: c => esc(c.phone || 'N/A') },
       { key: 'signup', label: 'Signup Date', sortable: true, render: c => fdt(c.signup, 'Lisbon', { weekday: false }) },
-      { key: 'a', label: 'Actions', render: () => `<div class="actions" style="justify-content:flex-start"><button class="icon-btn" data-edit title="Edit">${ic('edit')}</button><button class="icon-btn" data-view title="View">${ic('eye')}</button><button class="icon-btn" data-more title="More">${ic('dots')}</button></div>` }
+      { key: 'a', label: 'Actions', render: () => `<div class="actions" style="justify-content:flex-start"><button class="icon-btn" data-edit title="Edit">${ic('edit')}</button><button class="icon-btn" data-view title="Open this business’s cabinet">${ic('eye')}</button><button class="icon-btn" data-more title="More">${ic('dots')}</button></div>` }
     ],
     bind: (tr, c) => {
       $('[data-edit]', tr).onclick = () => modal({ title: `Edit customer #${c.id}`, body: customerForm(c), onOk: m => { Object.assign(c, formVals(m)); t.render(); toast('Customer saved'); } });
-      $('[data-view]', tr).onclick = () => viewModal(c.business || c.email, c);
+      $('[data-view]', tr).onclick = () => masquerade(c);
       $('[data-more]', tr).onclick = e => menu(e.currentTarget, [
-        { label: 'Log in as this business', icon: 'eye', run: () => masquerade(c) },
+        { label: 'View details', icon: 'doc', run: () => viewModal(c.business || c.email, c) },
         { label: c.blacklisted ? 'Remove from blacklist' : 'Add to blacklist', icon: 'ban', run: () => { c.blacklisted = !c.blacklisted; t.render(); toast(c.blacklisted ? 'Added to blacklist' : 'Removed from blacklist'); } },
         { label: 'Delete', icon: 'trash', danger: true, run: () => confirmBox('Delete customer', `Delete <b>${esc(c.business)}</b>? This cannot be undone.`, () => { DB.customers.splice(DB.customers.indexOf(c), 1); t.render(); toast('Customer deleted'); }, 'Delete') }
       ]);
