@@ -988,5 +988,77 @@ window.PARTNER_DATA = {
   show(location.hash==='#partner'?'partner':'admin');
 })();
 </script>
+
+<script>
+/* Prototype navigation: sidebar items open a page stub, action buttons show a toast.
+   In the real product these become normal links to /backend/* and /customers/*. */
+(function(){
+  const PAGES = {
+    'Assistant':'Chat with the AI assistant about businesses, accounts and platform numbers.',
+    'Scheduled tasks':'Things the assistant does later or on a schedule, e.g. a Monday summary.',
+    'Queue':'People waiting for a first experience, the match funnel and offers sent.',
+    'Experiences':'All experiences with status, date, partner and spots.',
+    'Spots & tickets':'Every gifted spot: who holds it, status, attendance.',
+    'Partners':'Partner businesses, their health and contact details.',
+    'Guests':'App users: what they took, went / no-show, Time Points.',
+    'Launch map':'Cities and countries shown on the homepage map.',
+    'City votes':'“Vote for your city” requests with duplicate detection.',
+    'Audience':'Impressions, unique users and shares per experience.',
+    'App installs':'Installs → sign-in → registration funnel by platform and country.',
+    'Push notifications':'Send a push with preview and confirmation.',
+    'Date ideas':'Scenario library for date ideas.',
+    'Contact messages':'Messages from the website contact form.',
+    'Event reports':'Reports about experiences from guests.',
+    'Logs':'Assistant runs, emails, pushes, ticket logs.',
+    'Settings':'Platform settings — incl. the queue auto-matcher switch.',
+    'Check in guests':'Enter a guest code or mark guests as arrived.',
+    'Results':'Your full results: guests, fill rate, attendance, reach, PDF report.',
+    'Cris, your assistant':'Send a programme or poster — Cris drafts the experiences.',
+    'Profile':'Business name, logo, description, links.',
+    'Venues':'Addresses where your experiences happen.',
+    'Sign out':'Signs you out of the business account.'
+  };
+  const label = a => a.childNodes ? Array.from(a.childNodes).filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim() : a.textContent.trim();
+
+  // Toast
+  const toast = document.createElement('div');
+  toast.className='tooltip'; toast.style.cssText='left:50%;top:auto;bottom:74px;transform:translateX(-50%);white-space:normal;max-width:360px;text-align:center';
+  document.body.appendChild(toast);
+  let tt; function say(t){ toast.textContent=t; toast.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>toast.classList.remove('show'),2600); }
+
+  document.querySelectorAll('.app').forEach(app => {
+    const main = app.querySelector('main');
+    const home = Array.from(main.children);
+    const stub = document.createElement('section'); stub.hidden = true; main.appendChild(stub);
+    const items = app.querySelectorAll('.nav-item');
+
+    function open(item){
+      items.forEach(i => { i.classList.toggle('active', i===item); i.toggleAttribute('aria-current', i===item); });
+      const name = label(item);
+      const isHome = name==='Overview' || name==='Dashboard';
+      home.forEach(n => { if (n !== stub) n.style.display = isHome ? '' : 'none'; });
+      stub.hidden = isHome;
+      if (!isHome) {
+        stub.innerHTML = `<div class="page-head"><div><h1>${name}</h1><p>${PAGES[name]||''}</p></div></div>
+          <div class="card empty"><div class="mascot" aria-hidden="true">🐾</div>
+          <div class="cell-title" style="margin-bottom:4px">This page isn’t part of the prototype yet</div>
+          <div class="muted" style="margin-bottom:14px">The prototype covers the main dashboard. This section keeps its current design until it’s redesigned.</div>
+          <button class="btn primary" type="button" data-home>← Back to ${app.id==='viewAdmin'?'Overview':'Dashboard'}</button></div>`;
+        stub.querySelector('[data-home]').onclick = () => open(items[0]);
+      }
+      window.scrollTo(0,0);
+    }
+    items.forEach(i => i.addEventListener('click', e => { e.preventDefault(); open(i); }));
+
+    // Action buttons / links inside content
+    app.addEventListener('click', e => {
+      const a = e.target.closest('a[href]');
+      if (!a || a.classList.contains('nav-item')) return;
+      const h = a.getAttribute('href');
+      if (h.startsWith('/') || h === '#') { e.preventDefault(); say(`Prototype: in the product “${a.textContent.trim()}” opens ${h==='#'?'the related page':h}.`); }
+    });
+  });
+})();
+</script>
 </body>
 </html>
