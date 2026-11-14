@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TIMEPLACEME · Dashboards</title>
+<style>
+/* TIMEPLACEME dashboards — shared styles (light + dark) */
+:root {
+  color-scheme: light;
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --surface-2: #f1f3f4;
+  --border: #e4e7ea;
+  --text: #121416;
+  --text-2: #4d5358;
+  --text-3: #7a8187;
+  --brand: #2fb67c;
+  --brand-ink: #0d7a4f;
+  --brand-soft: #e6f6ee;
+  --series-1: #2a78d6;   /* demand  (validated pair) */
+  --series-2: #eb6834;   /* supply  */
+  --good: #12924f;  --good-soft: #e3f4ea;
+  --warn: #b26b00;  --warn-soft: #fdf1dc;
+  --crit: #c93434;  --crit-soft: #fbe6e6;
+  --info: #2a6fc4;  --info-soft: #e5eefa;
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  --radius: 14px;
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b0c0d;
+  --surface: #17191b;
+  --surface-2: #202326;
+  --border: #2a2e32;
+  --text: #f2f3f4;
+  --text-2: #b9bfc4;
+  --text-3: #8a9197;
+  --brand: #41cc8f;
+  --brand-ink: #6fe0ad;
+  --brand-soft: #143325;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --good: #45c47d;  --good-soft: #15301f;
+  --warn: #f0a83a;  --warn-soft: #33270f;
+  --crit: #f07070;  --crit-soft: #3a1919;
+  --info: #6aa5f0;  --info-soft: #152539;
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--font); background: var(--bg); color: var(--text);
+  font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+/* ---------- Shell ---------- */
+.app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; background: linear-gradient(to right, var(--surface) 247px, var(--border) 247px, var(--border) 248px, var(--bg) 248px); }
+.topbar {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 12px;
+  height: 60px; padding: 0 20px; background: var(--surface);
+  border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; text-decoration: none; }
+.brand-mark { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--brand); display:grid; place-items:center; color: var(--brand); }
+.topbar .spacer { flex: 1; }
+.chip-env { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); }
+.icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; }
+.icon-btn:hover { background: var(--surface-2); }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brand); color: #fff; display:grid; place-items:center; font-weight: 700; font-size: 13px; }
+
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px 24px; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; }
+.nav-group { margin-bottom: 14px; }
+.nav-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); padding: 6px 10px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; color: var(--text-2); text-decoration: none; font-weight: 500; }
+.nav-item svg { flex: none; }
+.nav-item:hover { background: var(--surface-2); color: var(--text); }
+.nav-item.active { background: var(--brand-soft); color: var(--brand-ink); }
+.nav-item .count { margin-left: auto; font-size: 11px; font-weight: 700; min-width: 20px; text-align: center; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); }
+.nav-item .count.alert { background: var(--crit-soft); color: var(--crit); }
+
+.main { padding: 24px 28px 48px; min-width: 0; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.page-head h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -.01em; }
+.page-head p { margin: 0; color: var(--text-2); }
+
+/* ---------- Controls ---------- */
+.seg { display: inline-flex; padding: 3px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border); }
+.seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 8px; font-weight: 600; color: var(--text-2); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 10px; padding: 8px 14px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); text-decoration: none; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn.primary:hover { filter: brightness(.95); }
+.btn.sm { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+.btn.danger { color: var(--crit); }
+
+/* ---------- Cards ---------- */
+.grid { display: grid; gap: 16px; }
+.cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.span-2 { grid-column: span 2; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; min-width: 0; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.card-head h2 { font-size: 15px; margin: 0; }
+.card-head .sub { font-size: 12px; color: var(--text-3); }
+.card-head a { font-size: 13px; color: var(--brand-ink); text-decoration: none; font-weight: 600; }
+.section { margin-top: 16px; }
+
+/* KPI tile */
+.kpi .label { font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.kpi .value { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin: 6px 0 2px; }
+.kpi .value small { font-size: 14px; font-weight: 600; color: var(--text-3); margin-left: 4px; }
+.kpi .foot { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.kpi.hero { background: linear-gradient(160deg, var(--brand-soft), var(--surface) 70%); border-color: color-mix(in srgb, var(--brand) 30%, var(--border)); }
+.delta { font-weight: 700; font-size: 12px; padding: 1px 6px; border-radius: 6px; }
+.delta.up { color: var(--good); background: var(--good-soft); }
+.delta.down { color: var(--crit); background: var(--crit-soft); }
+.delta.flat { color: var(--text-2); background: var(--surface-2); }
+.tip { display:inline-grid; place-items:center; width:16px; height:16px; border-radius:50%; font-size:10px; font-weight:700; border:1px solid var(--border); color: var(--text-3); cursor: help; }
+
+/* Status pill (always icon/text + color) */
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.crit { background: var(--crit-soft); color: var(--crit); }
+.pill.info { background: var(--info-soft); color: var(--info); }
+.pill.neutral { background: var(--surface-2); color: var(--text-2); }
+
+/* Alert banner */
+.banner { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: var(--radius); border: 1px solid; margin-bottom: 16px; }
+.banner.crit { background: var(--crit-soft); border-color: color-mix(in srgb, var(--crit) 35%, transparent); }
+.banner .b-icon { color: var(--crit); margin-top: 1px; }
+.banner strong { display: block; margin-bottom: 2px; }
+.banner .b-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Attention list */
+.todo { list-style: none; margin: 0; padding: 0; }
+.todo li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid var(--border); }
+.todo li:first-child { border-top: 0; padding-top: 2px; }
+.todo .sev { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; }
+.sev.crit { background: var(--crit); } .sev.warn { background: var(--warn); } .sev.info { background: var(--info); }
+.todo .t { font-weight: 600; }
+.todo .d { font-size: 13px; color: var(--text-2); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; margin: 0 -18px -18px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 18px; border-top: 1px solid var(--border); vertical-align: middle; }
+th { font-size: 12px; font-weight: 600; color: var(--text-3); border-top: 0; background: var(--surface-2); }
+td.r, th.r { text-align: right; }
+tbody tr:hover { background: var(--surface-2); }
+.cell-title { font-weight: 600; }
+.cell-sub { font-size: 12px; color: var(--text-3); }
+
+/* Meter / funnel */
+.funnel { display: grid; gap: 10px; }
+.f-row { display: grid; grid-template-columns: 170px 1fr 92px; gap: 12px; align-items: center; }
+.f-label { font-size: 13px; color: var(--text-2); }
+.f-track { height: 22px; background: var(--surface-2); border-radius: 4px; overflow: hidden; position: relative; }
+.f-bar { height: 100%; background: var(--brand); border-radius: 0 4px 4px 0; min-width: 2px; }
+.f-bar.zero { background: transparent; }
+.f-val { text-align: right; font-weight: 700; }
+.f-val small { font-weight: 500; color: var(--text-3); margin-left: 4px; }
+.f-row.broken .f-label { color: var(--crit); font-weight: 600; }
+
+.meter { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.meter > span { display: block; height: 100%; background: var(--brand); border-radius: 0 4px 4px 0; }
+
+/* Legend */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* Charts */
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .grid-line { stroke: var(--border); stroke-width: 1; }
+.chart .axis-text { fill: var(--text-3); font-size: 11px; }
+.chart .line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .area { fill: var(--brand); opacity: .12; }
+.chart .hit { fill: transparent; }
+.chart .cross { stroke: var(--text-3); stroke-dasharray: 3 3; opacity: 0; }
+.chart .cross.on { opacity: 1; }
+.chart .dot { fill: var(--brand); stroke: var(--surface); stroke-width: 2; opacity: 0; }
+.chart .dot.on { opacity: 1; }
+.tooltip { position: fixed; z-index: 50; pointer-events: none; background: var(--text); color: var(--surface); font-size: 12px; padding: 6px 9px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.18); transform: translate(-50%, calc(-100% - 10px)); white-space: nowrap; opacity: 0; transition: opacity .08s; }
+.tooltip.show { opacity: 1; }
+.tooltip b { font-variant-numeric: tabular-nums; }
+
+/* Supply / demand rows */
+.sd { display: grid; gap: 12px; }
+.sd-row { display: grid; grid-template-columns: 110px 1fr 120px; gap: 12px; align-items: center; }
+.sd-bars { display: grid; gap: 2px; }
+.sd-bar { height: 10px; border-radius: 0 4px 4px 0; }
+.sd-bar.demand { background: var(--series-1); }
+.sd-bar.supply { background: var(--series-2); }
+.sd-city { font-weight: 600; }
+.sd-note { font-size: 12px; text-align: right; }
+
+/* Spark tiles */
+.spark-tile { display: grid; gap: 4px; }
+.spark-tile .v { font-size: 22px; font-weight: 700; }
+
+/* Event list */
+.event { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+.event:first-child { border-top: 0; padding-top: 0; }
+.date-badge { border-radius: 10px; background: var(--surface-2); text-align: center; padding: 6px 0; line-height: 1.1; }
+.date-badge b { display: block; font-size: 18px; }
+.date-badge span { font-size: 11px; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+
+/* Partner specific */
+.hello { display: flex; gap: 16px; align-items: center; }
+.mascot { width: 56px; height: 56px; border-radius: 16px; background: var(--brand-soft); display: grid; place-items: center; font-size: 30px; flex: none; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.step { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.step .n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--surface-2); color: var(--text-2); }
+.step.done .n { background: var(--good); color: #fff; }
+.step.done .st { color: var(--text-3); }
+.step.current { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.progress-line { display:flex; align-items:center; gap: 10px; margin: 14px 0 18px; font-size: 13px; color: var(--text-2); }
+.progress-line .meter { flex: 1; }
+.code-input { display: flex; gap: 8px; }
+.code-input input { flex: 1; min-width: 0; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; padding: 9px 12px; font: inherit; }
+.code-input input:not(:placeholder-shown) { letter-spacing: .12em; text-transform: uppercase; }
+.code-input input:focus, .btn:focus-visible, .seg button:focus-visible, .nav-item:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.tag { display:inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); margin: 2px 4px 2px 0; }
+.empty { text-align: center; padding: 28px 12px; color: var(--text-2); }
+.empty .mascot { margin: 0 auto 10px; }
+.demo-note { font-size: 12px; color: var(--text-3); margin-top: 24px; }
+.state-switch { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); }
+
+/* Responsive */
+@media (max-width: 1180px) { .cols-4 { grid-template-columns: repeat(2, minmax(0,1fr)); } .cols-3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; background: var(--bg); }
+  .sidebar { display: none; }
+  .cols-4, .cols-3, .cols-2 { grid-template-columns: 1fr; }
+  .span-2 { grid-column: auto; }
+  .main { padding: 18px 14px 40px; }
+  .f-row { grid-template-columns: 120px 1fr 70px; }
+  .sd-row { grid-template-columns: 80px 1fr; }
+  .sd-note { grid-column: 2; text-align: left; }
+}
+@media (forced-colors: active) { .f-bar, .sd-bar, .meter > span { background: CanvasText; } }
+
+.app[hidden]{display:none}
+.view-switch{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+
+</style>
+</head>
+<body>
+<div class="app" id="viewAdmin">
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-mark" data-icon="logo"></span>TIMEPLACEME</a>
+    <span class="chip-env">Admin</span>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="themeBtn" type="button"></button>
+    <span class="avatar" id="avatar">KA</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Admin navigation">
+    <div class="nav-group">
+      <div class="nav-label">Overview</div>
+      <a class="nav-item active" href="#" aria-current="page"><span data-icon="home"></span>Overview</a>
+      <a class="nav-item" href="#"><span data-icon="sparkle"></span>Assistant</a>
+      <a class="nav-item" href="#"><span data-icon="clock"></span>Scheduled tasks</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Marketplace</div>
+      <a class="nav-item" href="#"><span data-icon="hourglass"></span>Queue<span class="count alert">6</span></a>
+      <a class="nav-item" href="#"><span data-icon="calendar"></span>Experiences</a>
+      <a class="nav-item" href="#"><span data-icon="ticket"></span>Spots &amp; tickets</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">People</div>
+      <a class="nav-item" href="#"><span data-icon="building"></span>Partners</a>
+      <a class="nav-item" href="#"><span data-icon="users"></span>Guests</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Growth</div>
+      <a class="nav-item" href="#"><span data-icon="map"></span>Launch map</a>
+      <a class="nav-item" href="#"><span data-icon="pin"></span>City votes<span class="count">7</span></a>
+      <a class="nav-item" href="#"><span data-icon="chart"></span>Audience</a>
+      <a class="nav-item" href="#"><span data-icon="phone"></span>App installs</a>
+      <a class="nav-item" href="#"><span data-icon="bell"></span>Push notifications</a>
+      <a class="nav-item" href="#"><span data-icon="heart"></span>Date ideas</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Inbox</div>
+      <a class="nav-item" href="#"><span data-icon="mail"></span>Contact messages<span class="count">1</span></a>
+      <a class="nav-item" href="#"><span data-icon="flag"></span>Event reports</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">System</div>
+      <a class="nav-item" href="#"><span data-icon="list"></span>Logs</a>
+      <a class="nav-item" href="#"><span data-icon="settings"></span>Settings</a>
+    </div>
+  </nav>
+
+  <main class="main" id="main">
+    <div class="page-head">
+      <div>
+        <h1 id="greeting">Good evening</h1>
+        <p id="asOf" class="muted"></p>
+      </div>
+      <div class="seg" role="group" aria-label="Period">
+        <button type="button" aria-pressed="false">7 days</button>
+        <button type="button" aria-pressed="true">30 days</button>
+        <button type="button" aria-pressed="false">90 days</button>
+      </div>
+    </div>
+
+    <div id="systemBanner"></div>
+
+    <!-- KPI row -->
+    <section class="grid cols-4" id="kpis" aria-label="Key numbers"></section>
+
+    <!-- Attention + journey -->
+    <section class="grid cols-2 section">
+      <div class="card">
+        <div class="card-head"><h2>Needs your attention</h2><span class="sub" id="attnCount"></span></div>
+        <ul class="todo" id="attention"></ul>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>First-experience journey</h2>
+          <span class="sub">Where people drop off</span>
+        </div>
+        <div class="funnel" id="journey"></div>
+        <p class="faint" style="font-size:12px;margin:14px 0 0">Last 30 days, from the “Get” tap. On top of this: 2,592 impressions all time. Hover a row for the event behind it.</p>
+      </div>
+    </section>
+
+    <!-- Supply vs demand + growth -->
+    <section class="grid cols-3 section">
+      <div class="card span-2">
+        <div class="card-head">
+          <div><h2>Supply vs demand by city</h2><div class="sub">Where to recruit partners next</div></div>
+          <div class="legend"><span><i style="background:var(--series-1)"></i>People waiting</span><span><i style="background:var(--series-2)"></i>Open gifted spots</span></div>
+        </div>
+        <div class="sd" id="cities"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Growth</h2><span class="sub">Last 30 days</span></div>
+        <div class="spark-tile"><span class="muted">Experience impressions</span><span class="v num" id="impTotal"></span></div>
+        <div id="impChart"></div>
+        <div class="spark-tile" style="margin-top:12px"><span class="muted">App installs → signed in → registered</span><span class="v num" id="instTotal"></span></div>
+        <div class="meter" style="margin-top:6px" aria-hidden="true"><span id="regMeter"></span></div>
+        <div class="faint" style="font-size:12px;margin-top:6px" id="instNote"></div>
+      </div>
+    </section>
+
+    <!-- Partners + upcoming -->
+    <section class="grid cols-3 section">
+      <div class="card span-2">
+        <div class="card-head"><div><h2>Partner health</h2><div class="sub">Did gifting bring them first-time guests?</div></div><a href="#">All partners →</a></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Partner</th><th class="r">Spots gifted</th><th class="r">Taken</th><th class="r">Arrived</th><th>Next experience</th><th>Status</th></tr></thead>
+            <tbody id="partners"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Coming up</h2><a href="#">Calendar →</a></div>
+        <div id="upcoming"></div>
+      </div>
+    </section>
+
+    <p class="demo-note">Prototype · numbers from the back office on 14 Nov 2026 · data contract in <code>data/admin-data.js</code>.</p>
+  </main>
+</div>
+
+<div class="app" id="viewPartner" hidden>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-mark" data-icon="logo"></span>TIMEPLACEME</a>
+    <span class="chip-env">for Business</span>
+    <span class="spacer"></span>
+    <div class="state-switch">Demo state
+      <div class="seg" role="group" aria-label="Demo state">
+        <button type="button" data-state="new" aria-pressed="false">New partner</button>
+        <button type="button" data-state="active" aria-pressed="true">Active partner</button>
+      </div>
+    </div>
+    <button class="icon-btn" id="themeBtn2" type="button"></button>
+  </header>
+
+  <nav class="sidebar" aria-label="Partner navigation">
+    <div class="nav-group">
+      <a class="nav-item active" href="#" aria-current="page"><span data-icon="home"></span>Dashboard</a>
+      <a class="nav-item" href="#"><span data-icon="gift"></span>Experiences</a>
+      <a class="nav-item" href="#"><span data-icon="shield"></span>Check in guests<span class="count" id="navToday">2</span></a>
+      <a class="nav-item" href="#"><span data-icon="chart"></span>Results</a>
+      <a class="nav-item" href="#"><span data-icon="sparkle"></span>Cris, your assistant</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Business</div>
+      <a class="nav-item" href="#"><span data-icon="building"></span>Profile</a>
+      <a class="nav-item" href="#"><span data-icon="pin"></span>Venues</a>
+    </div>
+    <div class="nav-group">
+      <a class="nav-item" href="#"><span data-icon="logout"></span>Sign out</a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- ===== NEW PARTNER STATE ===== -->
+    <section id="stateNew" hidden>
+      <div class="page-head"><div class="hello"><div class="mascot" aria-hidden="true">🐾</div>
+        <div><h1 id="newHello">Welcome</h1><p>One step left — then we start bringing first-time guests to you. No ads, no link to share.</p></div></div></div>
+      <div class="grid cols-3">
+        <div class="card span-2">
+          <div class="card-head"><h2>Get your first guests</h2></div>
+          <div class="progress-line"><div class="meter"><span id="newMeter"></span></div><span id="newProgress"></span></div>
+          <ol class="steps" id="newSteps"></ol>
+        </div>
+        <div class="grid" style="align-content:start">
+          <div class="card" id="newDemand"></div>
+          <div class="card">
+            <div class="card-head"><h2>How it works</h2></div>
+            <ol class="muted" style="margin:0;padding-left:18px;display:grid;gap:8px">
+              <li>You gift a few spots you’d otherwise leave empty.</li>
+              <li>We offer them only to people who’ve never tried it.</li>
+              <li>They show their code at the door — you tap “Arrived”.</li>
+              <li>You see who came, what they thought, and who came back.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ACTIVE PARTNER STATE ===== -->
+    <section id="stateActive">
+      <div class="page-head">
+        <div class="hello"><div class="mascot" aria-hidden="true">🐾</div>
+          <div><h1 id="actHello">Hi</h1><p id="actSub" class="muted"></p></div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="seg" role="group" aria-label="Period"><button type="button" aria-pressed="false">7 days</button><button type="button" aria-pressed="true">30 days</button><button type="button" aria-pressed="false">All time</button></div>
+          <a class="btn" href="#"><span data-icon="download"></span>PDF report</a>
+          <a class="btn primary" href="#"><span data-icon="plus"></span>Gift a spot</a>
+        </div>
+      </div>
+
+      <section class="grid cols-4" id="pKpis" aria-label="Results"></section>
+
+      <section class="grid cols-3 section">
+        <div class="card span-2">
+          <div class="card-head"><div><h2>Tonight’s guests</h2><div class="sub" id="todaySub"></div></div><a href="#">All guests →</a></div>
+          <form class="code-input" id="codeForm" autocomplete="off">
+            <label class="sr-only" for="code">Invitation code</label>
+            <input id="code" maxlength="6" placeholder="Enter the guest’s code, e.g. K7Q2">
+            <button class="btn primary" type="submit">Check in</button>
+          </form>
+          <div id="codeMsg" class="faint" style="font-size:12px;margin:6px 0 4px" aria-live="polite"></div>
+          <div class="table-wrap" style="margin-top:8px">
+            <table><thead><tr><th>Guest</th><th>Experience</th><th class="r">Seats</th><th>Code</th><th>Status</th><th></th></tr></thead><tbody id="today"></tbody></table>
+          </div>
+        </div>
+        <div class="grid" style="align-content:start">
+          <div class="card" id="nudges"></div>
+        </div>
+      </section>
+
+      <section class="grid cols-3 section">
+        <div class="card span-2">
+          <div class="card-head"><h2>Your experiences</h2><a href="#">Manage →</a></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Experience</th><th>Date</th><th>Spots taken</th><th class="r">Arrived</th><th>Status</th></tr></thead>
+            <tbody id="exps"></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>What first-timers said</h2><span class="sub" id="woofCount"></span></div>
+          <div class="kpi"><div class="value num" id="woofAvg"></div><div class="foot">average Woof rating</div></div>
+          <div style="margin-top:12px" id="liked"></div>
+          <div class="card-head" style="margin:18px 0 8px"><h2>People who saw you</h2><span class="sub" id="reachTotal"></span></div>
+          <div id="reachChart"></div>
+        </div>
+      </section>
+      <p class="demo-note">Prototype · sample partner data in <code>data/partner-data.js</code>.</p>
+    </section>
+  </main>
+</div>
+
+<div class="seg view-switch" role="group" aria-label="Choose dashboard">
+  <button type="button" data-view="admin" aria-pressed="true">Admin (team)</button>
+  <button type="button" data-view="partner" aria-pressed="false">Partner (business)</button>
+</div>
+
+<script>
+/* Shared helpers: icons, theme toggle, tiny SVG charts with hover tooltips.
+   No dependencies — drop into any stack (Rails views, React, plain HTML). */
+(function (global) {
+  const ICONS = {
+    home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    building: '<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/>',
+    hourglass: '<path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+    ticket: '<path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v2h18v-2a2 2 0 0 1 0-4 2 2 0 0 0 0-4V6H3z"/><path d="M14 6v12" stroke-dasharray="2 2"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+    heart: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+    flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+    mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/>',
+    pin: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+    chart: '<path d="M4 20V4M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-7M20 16v-2"/>',
+    phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+    alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+    check: '<path d="m5 12 4.5 4.5L19 7"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    shield: '<path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z"/><path d="m9 12 2 2 4-4"/>',
+    gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8S10.5 3 8 4.5 9 8 12 8zM12 8s1.5-5 4-3.5S15 8 12 8z"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    logout: '<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/>',
+    logo: '<path d="M7 9h10M12 9v8M8.5 9 7 6M15.5 9 17 6"/>'
+  };
+  function icon(name, size = 18) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+  }
+
+  /* Theme: defaults to OS, toggle persists (storage wrapped — can throw in some contexts) */
+  function initTheme(btn) {
+    let saved = null;
+    try { saved = localStorage.getItem('tpm-theme'); } catch (e) {}
+    const prefersDark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+    apply(saved || (prefersDark ? 'dark' : 'light'));
+    btn && btn.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      apply(next);
+      try { localStorage.setItem('tpm-theme', next); } catch (e) {}
+    });
+    function apply(t) {
+      document.documentElement.dataset.theme = t;
+      if (btn) { btn.innerHTML = icon(t === 'dark' ? 'sun' : 'moon'); btn.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'); }
+    }
+  }
+
+  /* Tooltip singleton */
+  let tipEl;
+  function tip(html, x, y) {
+    if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tooltip'; tipEl.setAttribute('role', 'status'); document.body.appendChild(tipEl); }
+    if (html == null) { tipEl.classList.remove('show'); return; }
+    tipEl.innerHTML = html; tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px'; tipEl.classList.add('show');
+  }
+
+  /* Line/area chart, single series, crosshair + tooltip. */
+  function lineChart(el, points, opts = {}) {
+    const W = opts.width || 640, H = opts.height || 180, P = { t: 10, r: 8, b: 24, l: 32 };
+    const max = Math.max(1, ...points.map(p => p.v));
+    const niceMax = Math.ceil(max / (opts.step || 5)) * (opts.step || 5);
+    const x = i => P.l + (i / Math.max(1, points.length - 1)) * (W - P.l - P.r);
+    const y = v => H - P.b - (v / niceMax) * (H - P.t - P.b);
+    const d = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+    const area = `${d}L${x(points.length - 1)},${y(0)}L${x(0)},${y(0)}Z`;
+    const ticks = [0, niceMax / 2, niceMax];
+    const labelEvery = Math.ceil(points.length / 6);
+    el.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.label || ''}">
+      ${ticks.map(t => `<line class="grid-line" x1="${P.l}" x2="${W - P.r}" y1="${y(t)}" y2="${y(t)}"/><text class="axis-text" x="${P.l - 6}" y="${y(t) + 4}" text-anchor="end">${t}</text>`).join('')}
+      ${points.map((p, i) => i % labelEvery === 0 ? `<text class="axis-text" x="${x(i)}" y="${H - 6}" text-anchor="middle">${p.label}</text>` : '').join('')}
+      <path class="area" d="${area}"/><path class="line" d="${d}"/>
+      <line class="cross" y1="${P.t}" y2="${H - P.b}" x1="-10" x2="-10"/><circle class="dot" r="4" cx="-10" cy="-10"/>
+      <rect class="hit" x="${P.l}" y="0" width="${W - P.l - P.r}" height="${H}"/>
+    </svg>`;
+    const svg = el.querySelector('svg'), cross = svg.querySelector('.cross'), dot = svg.querySelector('.dot');
+    svg.querySelector('.hit').addEventListener('mousemove', e => {
+      const r = svg.getBoundingClientRect();
+      const vx = (e.clientX - r.left) * (W / r.width);
+      const i = Math.max(0, Math.min(points.length - 1, Math.round((vx - P.l) / (W - P.l - P.r) * (points.length - 1))));
+      const px = x(i), py = y(points[i].v);
+      cross.setAttribute('x1', px); cross.setAttribute('x2', px); dot.setAttribute('cx', px); dot.setAttribute('cy', py); dot.classList.add('on'); cross.classList.add('on');
+      tip(`${points[i].full || points[i].label} · <b>${points[i].v}</b> ${opts.unit || ''}`, r.left + px * (r.width / W), r.top + py * (r.height / H));
+    });
+    svg.querySelector('.hit').addEventListener('mouseleave', () => { tip(null); cross.setAttribute('x1', -10); cross.setAttribute('x2', -10); dot.classList.remove('on'); cross.classList.remove('on'); });
+  }
+
+  /* Horizontal funnel. Each step: {label, value, note?, broken?} — % is vs previous non-broken step;
+     broken steps are side-signals (e.g. a switched-off job) and don't break the chain. */
+  function funnel(el, steps) {
+    const max = Math.max(1, ...steps.map(s => s.value));
+    let prev = null;
+    el.innerHTML = steps.map((s) => {
+      const pct = !s.broken && prev ? Math.round((s.value / prev) * 100) : null;
+      if (!s.broken) prev = s.value;
+      return `<div class="f-row ${s.broken ? 'broken' : ''}" data-tip="${s.label}: ${s.value}${pct != null ? ` (${pct}% of previous step)` : ''}${s.note ? ' — ' + s.note : ''}">
+        <div class="f-label">${s.broken ? '⚠ ' : ''}${s.label}</div>
+        <div class="f-track"><div class="f-bar ${s.value ? '' : 'zero'}" style="width:${(s.value / max) * 100}%"></div></div>
+        <div class="f-val num">${s.value}${pct != null ? `<small>${pct}%</small>` : ''}</div>
+      </div>`;
+    }).join('');
+    bindTips(el);
+  }
+
+  function bindTips(root) {
+    root.querySelectorAll('[data-tip]').forEach(n => {
+      n.addEventListener('mousemove', e => tip(n.dataset.tip, e.clientX, e.clientY));
+      n.addEventListener('mouseleave', () => tip(null));
+    });
+  }
+
+  function fmtPct(a, b) { return b ? Math.round((a / b) * 100) + '%' : '—'; }
+
+  global.TPM = { icon, initTheme, lineChart, funnel, bindTips, tip, fmtPct };
+})(window);
+
+</script>
+<script>
+/* Admin dashboard data.
+   Values come from the production back office screenshots of 14 Nov 2026.
+   Daily series are approximated from the charts. Replace with an API call —
+   the shape of this object is the contract (see docs/METRICS.md). */
+window.ADMIN_DATA = {
+  asOf: '2026-11-14T21:30:00Z',
+  admin: { name: 'Kateryna', initials: 'KA' },
+
+  system: {
+    queueAutoMatcher: false,          // Settings → First Experience Queue → queue_matching_enabled (CUSTOM: off)
+    queueAutoMatcherSettingUrl: '/backend/settings#first-experience-queue'
+  },
+
+  kpis: {
+    firstExperiences: { value: 5, prev: null, def: 'attendance_confirmed events in the period' },
+    fillRate:        { taken: 21, offered: 80, def: 'Taken ÷ (taken + available) gifted spots' },
+    unmetDemand:     { noMatch: 18, clicks: 23, def: 'no_match_found ÷ get_clicked' },
+    activeUsers:     { active30: 11, total: 48, def: 'Users with any session in the last 30 days' }
+  },
+
+  attention: [
+    { sev: 'crit', title: 'Queue auto-matcher is switched off',
+      desc: '6 people are waiting and 0 offers went out in 30 days. All match_* steps are 0.',
+      action: 'Turn on', href: '/backend/settings#first-experience-queue' },
+    { sev: 'crit', title: '2 people waiting with no supply — oldest for 63 days',
+      desc: 'Veronika (L’viv) since 12 Sep. No partner in that city yet.',
+      action: 'Open queue', href: '/backend/queue' },
+    { sev: 'warn', title: 'Partner at risk: Yabangee (Istanbul)',
+      desc: '16 spots over 4 Trivia nights, 0 taken. Events have passed.',
+      action: 'Contact partner', href: '/backend/customers' },
+    { sev: 'warn', title: '2 guests await attendance confirmation',
+      desc: 'Abha Goradia (Circus Archetypus) · Edlise Moreira (Videodance).',
+      action: 'Review', href: '/backend/tickets' },
+    { sev: 'warn', title: 'Contact form message unanswered for 69 days',
+      desc: '“For Business” · Stefan Kern. Reads like a generic investor template — check before replying.',
+      action: 'Open', href: '/backend/contact_submissions' },
+    { sev: 'info', title: '7 city votes look like duplicates',
+      desc: 'All for Porto, from one IP (89.180.112.217), within 1 minute.',
+      action: 'Reject all 7', href: '/backend/city_votes' },
+    { sev: 'info', title: 'Metric bug: “Onboarded” is 183% of registered',
+      desc: 'App Installs funnel steps are not nested. Needs a definition fix.',
+      action: 'Details', href: '/backend/app_installs' }
+  ],
+
+  journey: [
+    { label: 'Tapped “Get”',       value: 23,   note: 'get_clicked, 30 days' },
+    { label: 'Got a spot',         value: 5,    note: 'clicks that found a match (23 − 18)' },
+    { label: 'Attended',           value: 5,    note: 'attendance_confirmed' },
+    { label: 'Left a Woof',        value: 4,    note: 'woof_submitted' },
+    { label: 'Gifted it further',  value: 0,    note: 'match_gifted_further' },
+    { label: 'Offered from queue', value: 0,    note: 'side path for the 18 unmatched — auto-matcher is off', broken: true }
+  ],
+
+  // waiting = queue entries by location; openSpots = free gifted spots on upcoming events
+  cities: [
+    { city: 'Lisbon',   waiting: 0, openSpots: 1, partners: 4 },
+    { city: 'Paris',    waiting: 0, openSpots: 2, partners: 2 },
+    { city: 'Vienna',   waiting: 0, openSpots: 0, partners: 6, note: '1 spot paused' },
+    { city: 'L’viv',    waiting: 1, openSpots: 0, partners: 0 },
+    { city: 'Beijing',  waiting: 1, openSpots: 0, partners: 0, note: 'store reviewer' },
+    { city: 'Unknown',  waiting: 4, openSpots: 0, partners: 0, note: 'no location shared' }
+  ],
+
+  growth: {
+    impressions: [30,3,2,2,28,22,22,44,2,65,25,80,55,25,3,10,18,57,46,48,20,20,10,28,8,8,2,28,15,5],
+    installs:    [1,0,0,0,1,0,1,0,0,0,1,1,2,0,1,0,0,1,0,1,0,0,0,1,1,0,0,2,0,0],
+    startDate: '2026-10-16',
+    installsTotal: 14, signedIn: 11, registered: 6
+  },
+
+  partners: [
+    { name: 'InShadow', city: 'Lisbon', offered: 2, taken: 1, attended: 0, next: '2026-11-27', status: 'good' },
+    { name: 'Schubert Theater Wien', city: 'Vienna', offered: 2, taken: 1, attended: 0, next: '2026-12-03', status: 'good' },
+    { name: 'Gravity & Other Myths', city: 'Paris', offered: 2, taken: 0, attended: 0, next: '2026-12-04', status: 'info' },
+    { name: 'Yabangee', city: 'Istanbul', offered: 16, taken: 0, attended: 0, next: null, status: 'crit' },
+    { name: 'Mey Pole Dance Studio', city: 'Lisbon', offered: 0, taken: 0, attended: 0, next: null, status: 'neutral' },
+    { name: 'NINE DOTS Boutique Hotel', city: 'Azores', offered: 0, taken: 0, attended: 0, next: null, status: 'neutral' }
+  ],
+
+  upcoming: [
+    { date: '2026-11-27', title: 'Your First Videodance Screening', partner: 'InShadow', city: 'Lisbon', taken: 1, total: 2 },
+    { date: '2026-12-03', title: 'Circus Archetypus — Im Schatten der Träume', partner: 'Schubert Theater Wien', city: 'Vienna', taken: 1, total: 2, paused: 1 },
+    { date: '2026-12-04', title: 'Your First Contemporary Circus Show', partner: 'Gravity & Other Myths', city: 'Paris', taken: 0, total: 2 }
+  ]
+};
+
+/* Partner dashboard data — SAMPLE values for a fictional active partner,
+   used to show the design with content. The "new" state mirrors the real
+   onboarding flow (profile ✓, first experience ✓, publish pending). */
+window.PARTNER_DATA = {
+  asOf: '2026-11-14T21:30:00Z',
+
+  newPartner: {
+    name: 'Olena',
+    business: 'Your business',
+    steps: [
+      { title: 'Business profile', desc: 'Name, logo and venue address', done: true, href: '/customers/profile' },
+      { title: 'First experience', desc: 'A free spot you’re ready to gift', done: true, href: '/customers/events' },
+      { title: 'Publish', desc: 'Go live — we start matching first-timers nearby', done: false, href: '/customers/events' }
+    ],
+    demandNearby: { city: 'Lisbon', waiting: 3, topCategory: 'Music' }
+  },
+
+  active: {
+    name: 'Marta',
+    business: 'Casa do Fado (sample)',
+    city: 'Lisbon',
+    period: '30 days',
+    kpis: {
+      arrived:   { value: 12, prev: 7 },
+      gifted:    { value: 20, prev: 16 },
+      taken:     { value: 16 },
+      noShow:    { value: 2 },
+      reach:     { value: 1340, prev: 910 },
+      returning: { value: 3, def: 'Guests who came back after their first visit (self-reported via Woof or added by you)' }
+    },
+    reachDaily: [22,30,18,41,55,38,26,47,60,52,31,28,44,70,64,39,33,48,52,46,29,36,58,61,49,40,35,50,57,37],
+    startDate: '2026-10-16',
+    today: [
+      { name: 'Ana R.', time: '20:30', experience: 'Your First Fado Night', seats: 1, code: 'K7Q2', status: 'expected' },
+      { name: 'Tom W.', time: '20:30', experience: 'Your First Fado Night', seats: 2, code: 'M3P9', status: 'expected' },
+      { name: 'Inês B.', time: '20:30', experience: 'Your First Fado Night', seats: 1, code: 'X8L4', status: 'arrived' }
+    ],
+    experiences: [
+      { title: 'Your First Fado Night', date: '2026-11-14', taken: 4, total: 4, arrived: 1, status: 'live' },
+      { title: 'Fado & Petiscos for Beginners', date: '2026-11-21', taken: 3, total: 4, arrived: 0, status: 'live' },
+      { title: 'Guitarra Portuguesa: First Chords', date: '2026-11-28', taken: 0, total: 2, arrived: 0, status: 'live' },
+      { title: 'Sunday Fado Matinee', date: null, taken: 0, total: 3, arrived: 0, status: 'draft' }
+    ],
+    feedback: { woofs: 9, avg: 4.7, liked: ['Atmosphere', 'Host was welcoming', 'Would come again', 'Good for a first time'] },
+    nudges: [
+      { title: '3 people in Lisbon are waiting for a Music first', desc: 'Add one more date in December and we’ll offer it to them first.', action: 'Add a date', href: '/customers/events/new' },
+      { title: '“Guitarra Portuguesa” has no takers yet', desc: 'Add a photo and a short “what to expect” — first-timers say yes when they know what happens.', action: 'Improve listing', href: '/customers/events' }
+    ]
+  }
+};
+
+</script>
+<script>
+(function () {
+  const D = window.ADMIN_DATA, { icon, initTheme, lineChart, funnel, bindTips } = window.TPM;
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  document.querySelectorAll('[data-icon]').forEach(n => n.innerHTML = icon(n.dataset.icon, n.dataset.icon === 'logo' ? 18 : 18));
+  initTheme($('#themeBtn'));
+
+  // Header
+  const asOf = new Date(D.asOf);
+  const h = asOf.getHours();
+  $('#greeting').textContent = `${h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}, ${D.admin.name}`;
+  $('#asOf').textContent = `Here’s how TIMEPLACEME is doing · updated ${asOf.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+  $('#avatar').textContent = D.admin.initials;
+
+  // Period switch (visual only in the prototype)
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+    b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  }));
+
+  // Kill-switch banner
+  if (!D.system.queueAutoMatcher) {
+    $('#systemBanner').innerHTML = `<div class="banner crit" role="alert">
+      <span class="b-icon">${icon('alert', 20)}</span>
+      <div><strong>Matching is paused — nobody in the queue gets offers</strong>
+      <span class="muted">The queue auto-matcher was switched off in Settings. 6 people are waiting; 0 offers sent in the last 30 days.</span></div>
+      <div class="b-actions"><a class="btn sm primary" href="${D.system.queueAutoMatcherSettingUrl}">Turn matching on</a><a class="btn sm" href="/backend/queue">View queue</a></div>
+    </div>`;
+  }
+
+  // KPIs
+  const k = D.kpis;
+  const fill = Math.round(k.fillRate.taken / k.fillRate.offered * 100);
+  const unmet = Math.round(k.unmetDemand.noMatch / k.unmetDemand.clicks * 100);
+  const act = Math.round(k.activeUsers.active30 / k.activeUsers.total * 100);
+  const tile = (o) => `<article class="card kpi ${o.hero ? 'hero' : ''}">
+      <div class="label">${o.label} <span class="tip" data-tip="${esc(o.def)}" tabindex="0" aria-label="${esc(o.def)}">?</span></div>
+      <div class="value num">${o.value}${o.small ? `<small>${o.small}</small>` : ''}</div>
+      <div class="foot">${o.foot}</div>
+    </article>`;
+  $('#kpis').innerHTML = [
+    tile({ hero: true, label: 'First experiences delivered', value: k.firstExperiences.value, def: k.firstExperiences.def,
+      foot: `<span class="pill neutral">No comparison yet</span> the number the whole product exists for` }),
+    tile({ label: 'Gifted spots taken', value: fill + '%', def: k.fillRate.def,
+      foot: `${k.fillRate.taken} of ${k.fillRate.offered} spots` }),
+    tile({ label: 'Demand we couldn’t serve', value: unmet + '%', def: k.unmetDemand.def,
+      foot: `<span class="pill crit">${icon('alert', 12)} High</span> ${k.unmetDemand.noMatch} of ${k.unmetDemand.clicks} “Get” taps found nothing` }),
+    tile({ label: 'Active guests', value: k.activeUsers.active30, small: `/ ${k.activeUsers.total}`, def: k.activeUsers.def,
+      foot: `${act}% used the app in the last 30 days` })
+  ].join('');
+
+  // Attention
+  $('#attnCount').textContent = `${D.attention.length} items`;
+  $('#attention').innerHTML = D.attention.map(a => `<li>
+      <span class="sev ${a.sev}" role="img" aria-label="${a.sev === 'crit' ? 'Critical' : a.sev === 'warn' ? 'Warning' : 'Info'}"></span>
+      <div><div class="t">${esc(a.title)}</div><div class="d">${esc(a.desc)}</div></div>
+      <a class="btn sm" href="${a.href}">${esc(a.action)}</a></li>`).join('');
+
+  // Journey funnel
+  funnel($('#journey'), D.journey);
+
+  // Supply vs demand
+  const sdMax = Math.max(1, ...D.cities.flatMap(c => [c.waiting, c.openSpots]));
+  $('#cities').innerHTML = D.cities.map(c => {
+    const gap = c.waiting - c.openSpots;
+    const verdict = c.waiting && !c.openSpots ? `<span class="pill crit">${icon('alert', 12)} No supply</span>`
+      : !c.waiting && c.openSpots ? `<span class="pill warn">Needs demand</span>`
+      : gap > 0 ? `<span class="pill warn">Short by ${gap}</span>` : `<span class="pill good">${icon('check', 12)} Balanced</span>`;
+    return `<div class="sd-row" data-tip="${esc(c.city)}: ${c.waiting} waiting · ${c.openSpots} open spots · ${c.partners} partners${c.note ? ' · ' + esc(c.note) : ''}">
+      <div><div class="sd-city">${esc(c.city)}</div><div class="cell-sub">${c.partners} partner${c.partners === 1 ? '' : 's'}</div></div>
+      <div class="sd-bars">
+        <div class="sd-bar demand" style="width:${c.waiting / sdMax * 100}%"></div>
+        <div class="sd-bar supply" style="width:${c.openSpots / sdMax * 100}%"></div>
+      </div>
+      <div class="sd-note">${verdict}</div></div>`;
+  }).join('');
+
+  // Growth
+  const g = D.growth, start = new Date(g.startDate);
+  const pts = g.impressions.map((v, i) => {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    return { v, label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), full: d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) };
+  });
+  $('#impTotal').textContent = g.impressions.reduce((a, b) => a + b, 0).toLocaleString('en-GB');
+  lineChart($('#impChart'), pts, { width: 360, height: 130, step: 20, unit: 'impressions', label: 'Daily experience impressions, last 30 days' });
+  $('#instTotal').textContent = `${g.installsTotal} → ${g.signedIn} → ${g.registered}`;
+  $('#regMeter').style.width = (g.registered / g.installsTotal * 100) + '%';
+  $('#instNote').textContent = `${Math.round(g.registered / g.installsTotal * 100)}% of installs end up with an account`;
+
+  // Partners
+  const statusMap = { good: ['good', 'Healthy'], info: ['info', 'Upcoming'], crit: ['crit', 'At risk'], neutral: ['neutral', 'Not started'] };
+  const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—';
+  $('#partners').innerHTML = D.partners.map(p => {
+    const [cls, txt] = statusMap[p.status];
+    return `<tr><td><div class="cell-title">${esc(p.name)}</div><div class="cell-sub">${esc(p.city)}</div></td>
+      <td class="r num">${p.offered}</td><td class="r num">${p.taken}</td><td class="r num">${p.attended}</td>
+      <td>${fmt(p.next)}</td><td><span class="pill ${cls}">${txt}</span></td></tr>`;
+  }).join('');
+
+  // Upcoming
+  $('#upcoming').innerHTML = D.upcoming.map(e => {
+    const d = new Date(e.date), free = e.total - e.taken - (e.paused || 0);
+    return `<div class="event">
+      <div class="date-badge"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-GB', { month: 'short' })}</span></div>
+      <div><div class="cell-title">${esc(e.title)}</div><div class="cell-sub">${esc(e.partner)} · ${esc(e.city)}</div></div>
+      <span class="pill ${free > 0 ? 'warn' : 'good'}">${e.taken}/${e.total} taken</span></div>`;
+  }).join('');
+
+  bindTips(document);
+})();
+
+</script>
+<script>
+(function () {
+  const D = window.PARTNER_DATA, { icon, initTheme, lineChart, bindTips } = window.TPM;
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : '—';
+
+  document.querySelectorAll('[data-icon]').forEach(n => n.innerHTML = icon(n.dataset.icon, 18));
+  initTheme($('#themeBtn2'));
+
+  // Demo state switch
+  function setState(s) {
+    $('#stateNew').hidden = s !== 'new';
+    $('#stateActive').hidden = s !== 'active';
+    document.querySelectorAll('[data-state]').forEach(b => b.setAttribute('aria-pressed', b.dataset.state === s));
+  }
+  document.querySelectorAll('[data-state]').forEach(b => b.addEventListener('click', () => setState(b.dataset.state)));
+  document.querySelectorAll('#stateActive .seg button').forEach(b => b.addEventListener('click', () =>
+    b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b))));
+
+  /* ---------- New partner ---------- */
+  const N = D.newPartner;
+  const done = N.steps.filter(s => s.done).length;
+  const currentIdx = N.steps.findIndex(s => !s.done);
+  $('#newHello').textContent = `Welcome, ${N.name}`;
+  $('#newMeter').style.width = (done / N.steps.length * 100) + '%';
+  $('#newProgress').textContent = `${done} of ${N.steps.length} done`;
+  $('#newSteps').innerHTML = N.steps.map((s, i) => `<li class="step ${s.done ? 'done' : ''} ${i === currentIdx ? 'current' : ''}">
+      <span class="n">${s.done ? icon('check', 16) : i + 1}</span>
+      <div><div class="cell-title st">${esc(s.title)}</div><div class="cell-sub">${esc(s.desc)}</div></div>
+      ${i === currentIdx ? `<a class="btn primary sm" href="${s.href}">Publish now</a>` : `<a class="btn sm" href="${s.href}">${s.done ? 'Edit' : 'Start'}</a>`}
+    </li>`).join('');
+  $('#newDemand').innerHTML = `<div class="card-head"><h2>Waiting near you</h2></div>
+    <div class="kpi"><div class="value num">${N.demandNearby.waiting}</div>
+    <div class="foot">people in ${esc(N.demandNearby.city)} want a first ${esc(N.demandNearby.topCategory)} experience. Publish and we’ll offer yours first.</div></div>`;
+
+  /* ---------- Active partner ---------- */
+  const A = D.active, K = A.kpis;
+  $('#actHello').textContent = `Hi, ${A.name}`;
+  $('#actSub').textContent = `${A.business} · ${A.city} · here’s what gifting brought you in the last ${A.period}`;
+  const delta = (v, p) => {
+    if (p == null) return '';
+    const d = Math.round((v - p) / p * 100);
+    return `<span class="delta ${d > 0 ? 'up' : d < 0 ? 'down' : 'flat'}">${d > 0 ? '▲' : d < 0 ? '▼' : '■'} ${Math.abs(d)}%</span>`;
+  };
+  const att = Math.round(K.arrived.value / K.taken.value * 100);
+  $('#pKpis').innerHTML = [
+    `<article class="card kpi hero"><div class="label">First-time guests who came</div><div class="value num">${K.arrived.value}</div><div class="foot">${delta(K.arrived.value, K.arrived.prev)} vs previous 30 days</div></article>`,
+    `<article class="card kpi"><div class="label">Spots you gifted</div><div class="value num">${K.gifted.value}</div><div class="foot">${K.taken.value} taken · ${Math.round(K.taken.value / K.gifted.value * 100)}% fill rate</div></article>`,
+    `<article class="card kpi"><div class="label">Showed up</div><div class="value num">${att}%</div><div class="foot">${K.noShow.value} no-shows of ${K.taken.value} taken spots</div></article>`,
+    `<article class="card kpi"><div class="label">Came back <span class="tip" tabindex="0" data-tip="${esc(K.returning.def)}" aria-label="${esc(K.returning.def)}">?</span></div><div class="value num">${K.returning.value}</div><div class="foot">first-timers who became guests</div></article>`
+  ].join('');
+
+  // Tonight
+  const expected = A.today.filter(g => g.status === 'expected').length;
+  $('#todaySub').textContent = `${A.today.length} guests · ${expected} still to arrive`;
+  $('#navToday').textContent = expected;
+  function renderToday() {
+    $('#today').innerHTML = A.today.map((g, i) => `<tr>
+      <td class="cell-title">${esc(g.name)}</td>
+      <td><div>${esc(g.experience)}</div><div class="cell-sub">${g.time}</div></td>
+      <td class="r num">${g.seats}</td><td><code>${g.code}</code></td>
+      <td>${g.status === 'arrived' ? `<span class="pill good">${icon('check', 12)} Arrived</span>` : g.status === 'noshow' ? '<span class="pill crit">No-show</span>' : '<span class="pill info">Expected</span>'}</td>
+      <td class="r">${g.status === 'expected' ? `<button class="btn sm" data-arrive="${i}">Mark arrived</button>` : ''}</td></tr>`).join('');
+    document.querySelectorAll('[data-arrive]').forEach(b => b.addEventListener('click', () => { A.today[b.dataset.arrive].status = 'arrived'; renderToday(); }));
+  }
+  renderToday();
+  $('#codeForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const code = $('#code').value.trim().toUpperCase();
+    const g = A.today.find(x => x.code === code);
+    if (!g) { $('#codeMsg').textContent = `No guest with code “${code}” tonight. Check the code or the date.`; return; }
+    if (g.status === 'arrived') { $('#codeMsg').textContent = `${g.name} is already checked in.`; return; }
+    g.status = 'arrived'; $('#codeMsg').textContent = `✓ ${g.name} checked in — ${g.seats} seat${g.seats > 1 ? 's' : ''}. Enjoy the evening!`;
+    $('#code').value = ''; renderToday();
+  });
+
+  // Nudges
+  $('#nudges').innerHTML = `<div class="card-head"><h2>Suggestions from Cris</h2></div>` + A.nudges.map(n => `
+    <div style="padding:10px 0;border-top:1px solid var(--border)">
+      <div class="cell-title">${esc(n.title)}</div><div class="cell-sub" style="margin:2px 0 8px">${esc(n.desc)}</div>
+      <a class="btn sm" href="${n.href}">${esc(n.action)}</a></div>`).join('');
+
+  // Experiences
+  $('#exps').innerHTML = A.experiences.map(x => `<tr>
+    <td class="cell-title">${esc(x.title)}</td><td>${fmtDate(x.date)}</td>
+    <td style="min-width:140px"><div class="meter" aria-hidden="true"><span style="width:${x.taken / x.total * 100}%"></span></div><div class="cell-sub num">${x.taken} of ${x.total}</div></td>
+    <td class="r num">${x.arrived}</td>
+    <td>${x.status === 'live' ? (x.taken === 0 ? '<span class="pill warn">Live · no takers</span>' : '<span class="pill good">Live</span>') : '<span class="pill neutral">Draft</span>'}</td></tr>`).join('');
+
+  // Feedback + reach
+  $('#woofCount').textContent = `${A.feedback.woofs} Woofs`;
+  $('#woofAvg').innerHTML = `${A.feedback.avg}<small>/ 5</small>`;
+  $('#liked').innerHTML = A.feedback.liked.map(t => `<span class="tag">${esc(t)}</span>`).join('');
+  $('#reachTotal').textContent = `${A.reachDaily.reduce((a, b) => a + b, 0).toLocaleString('en-GB')} views`;
+  const start = new Date(A.startDate);
+  lineChart($('#reachChart'), A.reachDaily.map((v, i) => { const d = new Date(start); d.setDate(d.getDate() + i);
+    return { v, label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) }; }),
+    { width: 360, height: 120, step: 20, unit: 'views', label: 'Daily views of your experiences' });
+
+  bindTips(document);
+  setState('active');
+})();
+
+</script>
+<script>
+(function(){
+  function show(v){
+    document.getElementById('viewAdmin').hidden = v!=='admin';
+    document.getElementById('viewPartner').hidden = v!=='partner';
+    document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.view===v));
+    window.scrollTo(0,0);
+  }
+  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{ history.replaceState(null,'','#'+b.dataset.view); show(b.dataset.view); }));
+  show(location.hash==='#partner'?'partner':'admin');
+})();
+</script>
+</body>
+</html>
